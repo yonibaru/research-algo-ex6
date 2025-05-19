@@ -113,9 +113,7 @@ def calculate_rms_error_eq1(
     rms_error = math.sqrt(mean_squared_error)
     return rms_error
 
-def create_spht_key(pixel_triplet_coords: Tuple[dict, dict, dict], 
-                    al_parameter: float, 
-                    camera_scaling_factor: float) -> tuple:
+def create_spht_key(pixel_triplet_coords: Tuple[dict, dict, dict], al_parameter: float, camera_scaling_factor: float) -> tuple:
     """
     Calculates pairwise distances, sorts, scales, rounds, and returns an SPHT key.
     Args:
@@ -138,11 +136,10 @@ def create_spht_key(pixel_triplet_coords: Tuple[dict, dict, dict],
     
     pixel_distances = sorted((d12, d13, d23))
     
-    # Apply scaling and AL-based rounding
-    # Example: Convert pixel distances to "angular units" then round
-    scaled_distances = [d / camera_scaling_factor for d in pixel_distances]
-    # This rounding must match SPHT key generation exactly
-    key = tuple(round(d / al_parameter) * al_parameter for d in scaled_distances) 
+    scaled_distances = [d / camera_scaling_factor for d in pixel_distances] # Convert pixel distances to "angular units" then round
+    
+    key = tuple(round(d / al_parameter) * al_parameter for d in scaled_distances) # This rounding must match SPHT key generation exactly
+
     return tuple(sorted(key)) # Ensure sorted if SPHT keys are always sorted
 
 def detect_stars(image_path):
@@ -159,7 +156,7 @@ def detect_stars(image_path):
     params.maxThreshold = 255
 
     params.filterByArea = True
-    params.minArea = 5
+    params.minArea = 2
     params.maxArea = 40
 
     params.filterByCircularity = False
