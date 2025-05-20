@@ -246,3 +246,21 @@ def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)
     R = kabsch_algorithm(camera_vectors, inertial_vectors)
 
     return R
+
+
+def nearest_neighbor_srch(detected_stars_rotated: List):
+    print(f"radec: {RaDec}")
+    tree = KDTree(RaDec)
+    nearest_matches = []
+    max_angular_error_deg = 1.5  # adjustable threshold in degrees
+    # convert to Euclidean
+    max_cosine_dist = 2 * (np.sin(np.radians(max_angular_error_deg / 2))) ** 2
+
+    for vec in detected_stars_rotated:
+        dist, index = tree.query(vec)
+        if dist**2 <= max_cosine_dist:
+            matched_star = BSC[index]
+            nearest_matches.append((vec, matched_star, dist))
+            print("found neighbor")
+
+    return nearest_matches
