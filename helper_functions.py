@@ -264,3 +264,34 @@ def nearest_neighbor_srch(detected_stars_rotated: List):
             print("found neighbor")
 
     return nearest_matches
+
+
+def angular_error(vec1, vec2):
+    dot_product = np.clip(np.dot(vec1, vec2), -1.0, 1.0)
+    return math.degrees(math.acos(dot_product))
+
+
+def eliminate_exceeding_pairs(nearest_neighbor_pairs: list, valid_pairs, angular_threshold, bsc_catalog):
+    for s_prime_vec, catalog_star in nearest_neighbor_pairs:
+        catalog_index = catalog_star['matched_star']
+        catalog_vec = RaDec[catalog_index]
+
+        error_angle = angular_error(s_prime_vec, catalog_vec)
+        if error_angle <= angular_threshold:
+            valid_pairs.append((s_prime_vec, catalog_vec, error_angle))
+
+
+def compute_weighted_rms(valid_pairs, confidence_scores):
+    if not valid_pairs:
+        return float('inf')
+
+    weighted_errors = []
+    weights = []
+
+    for frame_star_index, s_vec, catalog_vec, angle_deg in valid_pairs:
+        _, confidence = confidence_scores.get(
+            frame_star_index, (None, 1))  # default weight = 1
+        weighted_errors.append(confidence * angle_deg ** 2)
+        weights.append(confidence)
+
+    return np.sqrt(sum(weighted_errors) / sum(weights))
