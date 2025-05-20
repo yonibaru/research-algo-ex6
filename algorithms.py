@@ -4,6 +4,7 @@ import numpy
 from helper_functions import * 
 import itertools
 from collections import defaultdict, Counter
+import cv2
 
 """
 An implementation of the algorithms described in the paper:
@@ -185,7 +186,42 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     >>> error < 0.01
     True
     """
-    pass
+    # calculate center of frame image
+    img_cv2 = cv2.imread(IMAGE_FILE)
+    center_x, center_y, _ = img_cv2.shape
+    center_x /= 2
+    center_y /= 2
+
+    # #define set ST0=S' - stars S transformed by T0
+    # temproray average focal lenght of COTS smartphone camera lenses.
+    focal_length = 2700
+    # stars_transformed = detect_stars
+    detected_stars_coord_vector = []
+    for i in range(len(detected_stars)):
+        dx = (detected_stars[i].get('x') - center_x) / focal_length
+        dy = (detected_stars[i].get('y') - center_y) / focal_length
+        norm = sqrt(dx**2 + dy**2 + 1)
+        # 3rd dimension is color channel
+        coord_vector = [dx/norm, dy/norm, 1/norm]
+        detected_stars_coord_vector.append(coord_vector)
+
+    detected_stars_rotated = []
+    for i in range(len(detected_stars_coord_vector)):
+        rotated_v = detected_stars_coord_vector[i] @ orientation_matrix
+        detected_stars_rotated.append(rotated_v)
+
+    # for each star s' in S' *search nearest neighbor* b' from BSC
+    # create L a tuple of all such subsets that will be like <s',b'>
+    nearest_neighbor_pairs = nearest_neighbor_srch(detected_stars_rotated)
+
+    # based on an "angular error" remove all pairs that exceed this error from L
+    for pair in nearest_neighbor_pairs:
+        pass
+    
+    # define ErrorEstimation to be weight root mean squar over 3D distances between pairs in L
+
+    # return ErrorEstimation
+    return 0
 
 # --- Algorithm 4 Implementation ---
 def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
@@ -224,7 +260,7 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
 
     return pixel_final_labels_with_confidence
 
-
+IMAGE_FILE = 'test_image_2.png'
 if __name__ == "__main__":
     detected_stars = detect_stars("test_image_2.png")
     star_catalog = [
