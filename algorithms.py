@@ -4,6 +4,7 @@ import numpy
 from helper_functions import * 
 import itertools
 from collections import defaultdict, Counter
+import random
 
 """
 An implementation of the algorithms described in the paper:
@@ -117,7 +118,7 @@ def stars_identification(
     sm_table_for_individual_pixels_by_index = defaultdict(list) # Keys will be indices
 
     num_detected_stars = len(detected_stars) # Use the correct parameter name
-
+    
     for index_triplet in itertools.combinations(range(num_detected_stars), 3):
         frame_pixel_triplet_objects = tuple(detected_stars[i] for i in index_triplet) # Use correct param name
         key = create_spht_key(frame_pixel_triplet_objects, al_parameter, camera_scaling_factor)
@@ -226,32 +227,64 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
 
 
 if __name__ == "__main__":
-    detected_stars = detect_stars("test_image_2.png")
+    detected_stars = detect_stars("ursa-major.png")
     star_catalog = [
-        {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah', 'B': 'η', 'C': 'Vir', 'F': '15', 'K': '9500', 'V': '3.89'},
-        {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima', 'B': 'γ', 'C': 'Vir', 'F': '29', 'K': '7500', 'V': '3.65'},
-        {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva', 'B': 'δ', 'C': 'Vir', 'F': '43', 'K': '3050', 'V': '3.38'}
+        # MOST STARS IN URSA MAJOR
+        { "B": "μ", "N": "Tania Australis", "C": "UMa", "Dec": "+41° 29′ 58″", "F": "34", "HR": "4069", "K": "3500", "RA": "10h 22m 19.7s", "V": "3.05" },
+        { "B": "λ", "N": "Tania Borealis", "C": "UMa", "Dec": "+42° 54′ 52″", "F": "33", "HR": "4033", "K": "9500", "RA": "10h 17m 05.8s", "V": "3.45" },
+        { "B": "θ", "N": "Sarir", "C": "UMa", "Dec": "+51° 40′ 38″", "F": "25", "HR": "3775", "K": "6600", "RA": "09h 32m 51.4s", "V": "3.17" },
+        { "B": "β", "N": "Merak", "C": "UMa", "Dec": "+56° 22′ 57″", "F": "48", "HR": "4295", "K": "9750", "RA": "11h 01m 50.5s", "V": "2.37" },
+        { "B": "ψ", "C": "UMa", "Dec": "+44° 29′ 55″", "F": "52", "HR": "4335", "K": "4850", "RA": "11h 09m 39.8s", "V": "3.01" },
+        { "B": "χ", "N": "Al Kaphrah", "C": "UMa", "Dec": "+47° 46′ 46″", "F": "63", "HR": "4518", "K": "5000", "RA": "11h 46m 03.0s", "V": "3.71" },
+        { "B": "γ", "N": "Phecda", "C": "UMa", "Dec": "+53° 41′ 41″", "F": "64", "HR": "4554", "K": "10000", "RA": "11h 53m 49.8s", "V": "2.44" },
+        { "B": "δ", "N": "Megrez", "C": "UMa", "Dec": "+57° 01′ 57″", "F": "69", "HR": "4660", "K": "9250", "RA": "12h 15m 25.6s", "V": "3.31" },
+        { "B": "ε", "N": "Alioth", "C": "UMa", "Dec": "+55° 57′ 35″", "F": "77", "HR": "4905", "K": "10000", "RA": "12h 54m 01.7s", "V": "1.77" },
+        { "B": "α", "N": "Dubhe", "C": "UMa", "Dec": "+61° 45′ 03″", "F": "50", "HR": "4301", "K": "5000", "RA": "11h 03m 43.7s", "V": "1.79" },
+        { "B": "υ", "C": "UMa", "Dec": "+59° 02′ 19″", "F": "29", "HR": "3888", "K": "7200", "RA": "09h 50m 59.4s", "V": "3.80" },
+        { "C": "UMa", "Dec": "+63° 03′ 43″", "F": "23", "HR": "3757", "K": "7500", "RA": "09h 31m 31.7s", "V": "3.67" },
+        { "B": "ο", "N": "Muscida", "C": "UMa", "Dec": "+60° 43′ 05″", "F": "1", "HR": "3323", "K": "5500", "RA": "08h 30m 15.9s", "V": "3.36" },
+        { "B": "η", "N": "Alkaid", "C": "UMa", "Dec": "+49° 18′ 48″", "F": "85", "HR": "5191", "K": "24000", "RA": "13h 47m 32.4s", "V": "1.86" },
     ]
-    camera_scaling_factor = 1/16.30
+    bsc = get_star_catalog()
+    subset_bsc = random.sample(bsc, 100)  # Take a random subset of 100
+
+    # Find and add the Ursa Major stars from the original bsc by HR value (as string or int)
+    hr_values = set(str(star["HR"]) for star in star_catalog)
+    for star in bsc:
+        if str(star.get("HR")) in hr_values and star not in subset_bsc:
+            subset_bsc.append(star)
+
+    camera_scaling_factor = 1/39.50
     al_parameter = 0.1
     spht = {}
-
-    # For each triplet in detected_stars, create a key and put it in spht
-    for triplet_indices in itertools.combinations(range(len(detected_stars)), 3):
-        triplet = tuple(detected_stars[i] for i in triplet_indices)
-        key = create_spht_key(triplet, al_parameter, camera_scaling_factor)
-        # Only create a key if the triplet matches the true stars (by coordinates)
-        star_coords = [
-            {'x': 46, 'y': 48},
-            {'x': 205, 'y': 32},
-            {'x': 135, 'y': 88}
-        ]
-        triplet_coords = [{ 'x': t['x'], 'y': t['y'] } for t in triplet]
-        if sorted(triplet_coords, key=lambda d: (d['x'], d['y'])) == sorted(star_coords, key=lambda d: (d['x'], d['y'])):
-            spht[key] = [
-                (star_catalog[0]['HR'], star_catalog[1]['HR'], star_catalog[2]['HR'])
-            ]
+    # Build the SPHT (Star Pattern Hash Table) for all triplets in subset_bsc
+    for triplet in itertools.combinations(subset_bsc, 3):
+        key = create_spht_key_offline(triplet, al_parameter)
+        if key not in spht:
+            spht[key] = []
+        # Store the HR values (or another unique identifier) for the triplet
+        spht[key].append(tuple(star.get("HR") for star in triplet))
+    
+    print(spht)
+    # TODO: WE ARE MISS UNDERSTANDING THE PAPER / LLM IS LYING, SPHT IS 10^1 MAGNNITUDE, AND ONLINE KEYS ARE 10^4 MAGNITUDE. FINDING A KEY WOULD BE IMPOSSIBLE. NEED TO UNDERSTAND WHETHER THE CAMERA SCLAING FACTOR GOES INTO OFFLIEN KEYS (PROBABLY YES)
+    # result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+    # print(result)
+    # # For each triplet in detected_stars, create a key and put it in spht
+    # for triplet_indices in itertools.combinations(range(len(detected_stars)), 3):
+    #     triplet = tuple(detected_stars[i] for i in triplet_indices)
+    #     key = create_spht_key(triplet, al_parameter, camera_scaling_factor)
+    #     # Only create a key if the triplet matches the true stars (by coordinates)
+    #     star_coords = [
+    #         {'x': 46, 'y': 48},
+    #         {'x': 205, 'y': 32},
+    #         {'x': 135, 'y': 88}
+    #     ]
+    #     triplet_coords = [{ 'x': t['x'], 'y': t['y'] } for t in triplet]
+    #     if sorted(triplet_coords, key=lambda d: (d['x'], d['y'])) == sorted(star_coords, key=lambda d: (d['x'], d['y'])):
+    #         spht[key] = [
+    #             (star_catalog[0]['HR'], star_catalog[1]['HR'], star_catalog[2]['HR'])
+    #         ]
     # print(spht)
     # Call the stars_identification function
-    result = stars_identification(detected_stars, spht, al_parameter, camera_scaling_factor)
-    print(result)
+    # result = stars_identification(detected_stars, spht, al_parameter, camera_scaling_factor)
+    # print(result)
