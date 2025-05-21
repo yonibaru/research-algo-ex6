@@ -123,7 +123,6 @@ def stars_identification(
         frame_pixel_triplet_objects = tuple(detected_stars[i] for i in index_triplet) # Use correct param name
         key = create_spht_key(frame_pixel_triplet_objects, al_parameter, camera_scaling_factor)
         matching_catalog_star_triplets = spht.get(key, [])
-
         if matching_catalog_star_triplets:
             for catalog_star_id_triplet in matching_catalog_star_triplets:
                 for i in range(3): 
@@ -227,7 +226,33 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
 
 
 if __name__ == "__main__":
-    detected_stars = detect_stars("ursa-major.png")
+    detected_stars = detect_stars("ursa-major-reduced.png")
+    visualize_stars("ursa-major-reduced.png",detected_stars, "ursa-major-detected.png")
+    # al_parameter = 0.1
+    # camera_scaling_factor = 18.18
+
+    # # ab_angular = calculate_angular_distance(155.55, 41.49, 167.41, 44.49)  # A-B
+    # # ac_angular = calculate_angular_distance(155.55, 41.49, 165.41, 56.38)  # A-C
+    # # bc_angular = calculate_angular_distance(167.41, 44.49, 165.41, 56.38)  # B-C
+    # ad = (
+    #     {'RA': 155.55, 'Dec': 41.49},
+    #     {'RA': 167.41, 'Dec': 44.49},
+    #     {'RA': 165.41, 'Dec': 56.38}
+    # )
+
+    # # ab_pixel = calculate_pixel_distance(495, 316, 652, 371)  # A-B
+    # # ac_pixel = calculate_pixel_distance(495, 316, 618, 585)  # A-C
+    # # bc_pixel = calculate_pixel_distance(652, 371, 618, 585)  # B-C
+    # pd = (
+    #     {'x': 495, 'y': 316},
+    #     {'x': 652, 'y': 371},
+    #     {'x': 619, 'y': 585}
+    # )
+    
+    
+    # print(create_spht_key(pd, al_parameter, camera_scaling_factor))
+    # print(create_spht_key_offline(ad, al_parameter, camera_scaling_factor))
+    
     star_catalog = [
         # MOST STARS IN URSA MAJOR
         { "B": "μ", "N": "Tania Australis", "C": "UMa", "Dec": "+41° 29′ 58″", "F": "34", "HR": "4069", "K": "3500", "RA": "10h 22m 19.7s", "V": "3.05" },
@@ -245,6 +270,8 @@ if __name__ == "__main__":
         { "B": "ο", "N": "Muscida", "C": "UMa", "Dec": "+60° 43′ 05″", "F": "1", "HR": "3323", "K": "5500", "RA": "08h 30m 15.9s", "V": "3.36" },
         { "B": "η", "N": "Alkaid", "C": "UMa", "Dec": "+49° 18′ 48″", "F": "85", "HR": "5191", "K": "24000", "RA": "13h 47m 32.4s", "V": "1.86" },
     ]
+    
+    random.seed(42)
     bsc = get_star_catalog()
     subset_bsc = random.sample(bsc, 100)  # Take a random subset of 100
 
@@ -254,21 +281,24 @@ if __name__ == "__main__":
         if str(star.get("HR")) in hr_values and star not in subset_bsc:
             subset_bsc.append(star)
 
-    camera_scaling_factor = 1/39.50
+    # Parameters
+    camera_scaling_factor = 18.18
     al_parameter = 0.1
-    spht = {}
+    
     # Build the SPHT (Star Pattern Hash Table) for all triplets in subset_bsc
+    spht = {}
     for triplet in itertools.combinations(subset_bsc, 3):
-        key = create_spht_key_offline(triplet, al_parameter)
+        key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
         if key not in spht:
             spht[key] = []
         # Store the HR values (or another unique identifier) for the triplet
         spht[key].append(tuple(star.get("HR") for star in triplet))
+        
+    # Execute online algorithm on ursa-major-reduced.png
+    result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+    print(result)
     
-    print(spht)
-    # TODO: WE ARE MISS UNDERSTANDING THE PAPER / LLM IS LYING, SPHT IS 10^1 MAGNNITUDE, AND ONLINE KEYS ARE 10^4 MAGNITUDE. FINDING A KEY WOULD BE IMPOSSIBLE. NEED TO UNDERSTAND WHETHER THE CAMERA SCLAING FACTOR GOES INTO OFFLIEN KEYS (PROBABLY YES)
-    # result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
-    # print(result)
+    
     # # For each triplet in detected_stars, create a key and put it in spht
     # for triplet_indices in itertools.combinations(range(len(detected_stars)), 3):
     #     triplet = tuple(detected_stars[i] for i in triplet_indices)

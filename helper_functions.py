@@ -130,19 +130,17 @@ def create_spht_key(pixel_triplet_coords: Tuple[dict, dict, dict], al_parameter:
     coords = [(s['x'], s['y']) for s in pixel_triplet_coords]
     
     p1, p2, p3 = coords
-    d12 = ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
-    d13 = ((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2)**0.5
-    d23 = ((p2[0] - p3[0])**2 + (p2[1] - p3[1])**2)**0.5
+    d12 = calculate_pixel_distance(p1[0], p1[1], p2[0], p2[1]) / camera_scaling_factor
+    d13 = calculate_pixel_distance(p1[0], p1[1], p3[0], p3[1]) / camera_scaling_factor
+    d23 = calculate_pixel_distance(p2[0], p2[1], p3[0], p3[1]) / camera_scaling_factor
     
     pixel_distances = sorted((d12, d13, d23))
     
-    scaled_distances = [d / camera_scaling_factor for d in pixel_distances] # Convert pixel distances to "angular units" then round
-    
-    key = tuple(round(d / al_parameter) * al_parameter for d in scaled_distances) # This rounding must match SPHT key generation exactly
+    key = tuple((d / al_parameter) * al_parameter for d in pixel_distances) # This rounding must match SPHT key generation exactly
+    rounded_key = tuple(round(d, 0) for d in key) # Round to 6 decimal places
+    return tuple(sorted(rounded_key)) # Ensure sorted if SPHT keys are always sorted
 
-    return tuple(sorted(key)) # Ensure sorted if SPHT keys are always sorted
-
-def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_parameter: float) -> tuple:
+def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_parameter: float,camera_scaling_factor:float=1.0) -> tuple:
     """
     Calculates pairwise distances, sorts, scales, rounds, and returns an SPHT key.
     Args:
@@ -158,16 +156,13 @@ def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_para
     # This is a placeholder - actual implementation is complex
     coords = [(s['Dec'], s['RA']) for s in bsc_triplet_coords]
     p1, p2, p3 = coords #index 0 = dec, index 1 = ra
-    d12 = calculate_angular_distance(p1[1], p1[0], p2[1], p2[0])
-    d13 = calculate_angular_distance(p1[1], p1[0], p3[1], p3[0])
-    d23 = calculate_angular_distance(p2[1], p2[0], p3[1], p3[0])
-    
+    d12 = calculate_angular_distance(p1[1], p1[0], p2[1], p2[0]) 
+    d13 = calculate_angular_distance(p1[1], p1[0], p3[1], p3[0]) 
+    d23 = calculate_angular_distance(p2[1], p2[0], p3[1], p3[0]) 
     ang_distances = sorted((d12, d13, d23))
-    
-    
-    key = tuple(round(d / al_parameter) * al_parameter for d in ang_distances) 
-
-    return tuple(sorted(key)) # Ensure sorted if SPHT keys are always sorted
+    key = tuple((d / al_parameter) * al_parameter for d in ang_distances) 
+    rounded_key = tuple(round(d, 0) for d in key) 
+    return tuple(sorted(rounded_key)) # Ensure sorted if SPHT keys are always sorted
 
 def detect_stars(image_path):
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
