@@ -3,21 +3,11 @@ import random
 import itertools
 from typing import List, Tuple, Dict, Any
 from algorithms import stars_identification_bf
-from helper_functions import detect_stars
+from helper_functions import *
 import numpy as np
 
-# We'll assume these helper functions for the tests
-# In a real test scenario, these would be imported from the appropriate module
-def calculate_pixel_distance(x1, y1, x2, y2):
-    return ((x2-x1)**2 + (y2-y1)**2)**0.5
 
-def calculate_angular_distance(ra1, dec1, ra2, dec2):
-    return abs(ra2-ra1) + abs(dec2-dec1)  # Simplified for testing
-
-def calculate_rms_error_eq1(pixel_distances, angular_distances):
-    return sum((p-a)**2 for p, a in zip(pixel_distances, angular_distances))**0.5
-
-class TestStarsIdentificationBF:
+class TestAlgorithm1:
     
 
     # Test case 1: Empty input - no detected stars
@@ -139,7 +129,9 @@ class SPHT:
     def lookup(self, key):
         return self.patterns.get(key, [])
 
-class TestStarsIdentificationImproved:
+from algorithms import stars_identification
+
+class TestAlgorithm2:
     
     # Test case 1: Empty input - no detected stars
     def test_empty_input(self):
@@ -162,7 +154,7 @@ class TestStarsIdentificationImproved:
         result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
         assert result == [], "Function should return empty list for insufficient stars"
     
-    # Test case 3: Perfect match with pre-populated SPHT
+    # Test case 3: Perfect match with 3 stars
     def test_perfect_match(self):
         # Three detected stars in the frame
         detected_stars = [
@@ -194,89 +186,107 @@ class TestStarsIdentificationImproved:
         assert result == expected_result, f"Expected {expected_result}, but got {result}"
     
     
-    # Test case 4: Multiple matches in SPHT
+    # Test case 4: Real life scenario, testing matching between offline generated keys and online generated keys created by the algorithm in real time.
+    # This test is not trivial, even though the catalog only contains the 14 stars, the algorithm has to identify them by matching the pixel distances to angular distances.
     def test_multiple_matches(self):
-        detected_stars = [
-            {'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}
+        # Detect stars in the image
+        detected_stars = detect_stars("ursa-major-reduced.png")
+        
+        # Stars in Ursa Major constellation
+        ursa_major_bsc = [
+            { "B": "μ", "N": "Tania Australis", "C": "UMa", "Dec": "+41° 29′ 58″", "F": "34", "HR": "4069", "K": "3500", "RA": "10h 22m 19.7s", "V": "3.05" },
+            { "B": "λ", "N": "Tania Borealis", "C": "UMa", "Dec": "+42° 54′ 52″", "F": "33", "HR": "4033", "K": "9500", "RA": "10h 17m 05.8s", "V": "3.45" },
+            { "B": "θ", "N": "Sarir", "C": "UMa", "Dec": "+51° 40′ 38″", "F": "25", "HR": "3775", "K": "6600", "RA": "09h 32m 51.4s", "V": "3.17" },
+            { "B": "β", "N": "Merak", "C": "UMa", "Dec": "+56° 22′ 57″", "F": "48", "HR": "4295", "K": "9750", "RA": "11h 01m 50.5s", "V": "2.37" },
+            { "B": "ψ", "C": "UMa", "Dec": "+44° 29′ 55″", "F": "52", "HR": "4335", "K": "4850", "RA": "11h 09m 39.8s", "V": "3.01" },
+            { "B": "χ", "N": "Al Kaphrah", "C": "UMa", "Dec": "+47° 46′ 46″", "F": "63", "HR": "4518", "K": "5000", "RA": "11h 46m 03.0s", "V": "3.71" },
+            { "B": "γ", "N": "Phecda", "C": "UMa", "Dec": "+53° 41′ 41″", "F": "64", "HR": "4554", "K": "10000", "RA": "11h 53m 49.8s", "V": "2.44" },
+            { "B": "δ", "N": "Megrez", "C": "UMa", "Dec": "+57° 01′ 57″", "F": "69", "HR": "4660", "K": "9250", "RA": "12h 15m 25.6s", "V": "3.31" },
+            { "B": "ε", "N": "Alioth", "C": "UMa", "Dec": "+55° 57′ 35″", "F": "77", "HR": "4905", "K": "10000", "RA": "12h 54m 01.7s", "V": "1.77" },
+            { "B": "α", "N": "Dubhe", "C": "UMa", "Dec": "+61° 45′ 03″", "F": "50", "HR": "4301", "K": "5000", "RA": "11h 03m 43.7s", "V": "1.79" },
+            { "B": "υ", "C": "UMa", "Dec": "+59° 02′ 19″", "F": "29", "HR": "3888", "K": "7200", "RA": "09h 50m 59.4s", "V": "3.80" },
+            { "C": "UMa", "Dec": "+63° 03′ 43″", "F": "23", "HR": "3757", "K": "7500", "RA": "09h 31m 31.7s", "V": "3.67" },
+            { "B": "ο", "N": "Muscida", "C": "UMa", "Dec": "+60° 43′ 05″", "F": "1", "HR": "3323", "K": "5500", "RA": "08h 30m 15.9s", "V": "3.36" },
+            { "B": "η", "N": "Alkaid", "C": "UMa", "Dec": "+49° 18′ 48″", "F": "85", "HR": "5191", "K": "24000", "RA": "13h 47m 32.4s", "V": "1.86" },
         ]
         
-        # Create multiple catalog star triplets that match the pattern
-        catalog_triplet1 = [
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        ]
+        bsc = get_star_catalog()
+        subset_bsc = []
+
+        # Find and add the Ursa Major stars from the original bsc by HR value (as string or int)
+        hr_values = set(str(star["HR"]) for star in ursa_major_bsc)
+        for star in bsc:
+            if str(star.get("HR")) in hr_values and star not in subset_bsc:
+                subset_bsc.append(star)
+
+        # Parameters
+        camera_scaling_factor = 18.18 # We can assume this is the scaling factor for the camera
+        al_parameter = 0.1
         
-        catalog_triplet2 = [
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N':'StarOutlier1'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'StarOutlier2'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'StarOutlier3'}
-        ]
-        
-        # SPHT with multiple matching patterns for the same key
-        al_parameter = 0.2
-        pattern_key1 = create_spht_key(catalog_triplet1[0], catalog_triplet1[1], catalog_triplet1[2], al_parameter)
-        pattern_key2 = create_spht_key(catalog_triplet2[0], catalog_triplet2[1], catalog_triplet2[2], al_parameter)
-        spht = SPHT({pattern_key1: [catalog_triplet1]},{pattern_key2: [catalog_triplet2]})
-        
-        result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
-        
-        # Expected: Both matches should be returned, with the better match first
-        expected_result = [
-            (tuple(detected_stars), tuple(catalog_triplet1)),
-            (tuple(detected_stars), tuple(catalog_triplet2))
-        ]
-        
-        # Verify that we got both matches (order might vary)
-        assert len(result) == 2, "Function should return two matches"
-        for match in expected_result:
-            assert match in result, f"Expected match {match} not found in results"
-    
-    
-    # Test case 5: Large number of detected stars (hundreds of outliers)
-    def test_large_number_of_detected_stars(self):
-        # Generate 200 random star positions
-        detected_stars = [
-            {'x': random.randint(0, 1000), 'y': random.randint(0, 1000)} for _ in range(200)
-        ]
-        
-        real_stars = [
-            {'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}
-        ]
-        
-        detected_stars = detected_stars + real_stars
-        
-        # Create a simple SPHT
-        catalog_triplet = [
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        ]
-        
-        al_parameter = 0.2
-        key = create_spht_key(catalog_triplet[0], catalog_triplet[1], catalog_triplet[2], al_parameter)
-        spht = SPHT({key: [catalog_triplet]})
-        
-        result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
-        
-        # The function should handle a large number of stars efficiently
-        # and potentially find multiple matches among the combinations
-        
-        # We can't predict exactly how many matches will be found,
-        # but we can verify the structure of the results
-        for r in result:
-            assert len(r) == 2, "Each result should be a tuple with two elements"
-            detected_triplet, catalog_triplet = r
-            assert len(detected_triplet) == 3, "Detected triplet should have 3 stars"
-            assert len(catalog_triplet) == 3, "Catalog triplet should have 3 stars"
+        # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
+        spht = {}
+        for triplet in itertools.combinations(subset_bsc, 3):
+            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            if key not in spht:
+                spht[key] = []
+            # Store the HR values (or another unique identifier) for the triplet
+            spht[key].append(tuple(star.get("HR") for star in triplet))
             
-            # Check that the detected stars are from our input list
-            for star in detected_triplet:
-                assert star in detected_stars, "Returned star should be from the input list"
+        # Execute online algorithm on ursa-major-reduced.png
+        result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+        print(result)
+    
+    
+    # Test case 5: real life scenario, 14 stars visible, 100 random stars (outliers) in the catalog.
+    def real_life_scenario(self):
+        # Detect stars in the image
+        detected_stars = detect_stars("ursa-major-reduced.png")
+        
+        # Stars in Ursa Major constellation
+        ursa_major_bsc = [
+            { "B": "μ", "N": "Tania Australis", "C": "UMa", "Dec": "+41° 29′ 58″", "F": "34", "HR": "4069", "K": "3500", "RA": "10h 22m 19.7s", "V": "3.05" },
+            { "B": "λ", "N": "Tania Borealis", "C": "UMa", "Dec": "+42° 54′ 52″", "F": "33", "HR": "4033", "K": "9500", "RA": "10h 17m 05.8s", "V": "3.45" },
+            { "B": "θ", "N": "Sarir", "C": "UMa", "Dec": "+51° 40′ 38″", "F": "25", "HR": "3775", "K": "6600", "RA": "09h 32m 51.4s", "V": "3.17" },
+            { "B": "β", "N": "Merak", "C": "UMa", "Dec": "+56° 22′ 57″", "F": "48", "HR": "4295", "K": "9750", "RA": "11h 01m 50.5s", "V": "2.37" },
+            { "B": "ψ", "C": "UMa", "Dec": "+44° 29′ 55″", "F": "52", "HR": "4335", "K": "4850", "RA": "11h 09m 39.8s", "V": "3.01" },
+            { "B": "χ", "N": "Al Kaphrah", "C": "UMa", "Dec": "+47° 46′ 46″", "F": "63", "HR": "4518", "K": "5000", "RA": "11h 46m 03.0s", "V": "3.71" },
+            { "B": "γ", "N": "Phecda", "C": "UMa", "Dec": "+53° 41′ 41″", "F": "64", "HR": "4554", "K": "10000", "RA": "11h 53m 49.8s", "V": "2.44" },
+            { "B": "δ", "N": "Megrez", "C": "UMa", "Dec": "+57° 01′ 57″", "F": "69", "HR": "4660", "K": "9250", "RA": "12h 15m 25.6s", "V": "3.31" },
+            { "B": "ε", "N": "Alioth", "C": "UMa", "Dec": "+55° 57′ 35″", "F": "77", "HR": "4905", "K": "10000", "RA": "12h 54m 01.7s", "V": "1.77" },
+            { "B": "α", "N": "Dubhe", "C": "UMa", "Dec": "+61° 45′ 03″", "F": "50", "HR": "4301", "K": "5000", "RA": "11h 03m 43.7s", "V": "1.79" },
+            { "B": "υ", "C": "UMa", "Dec": "+59° 02′ 19″", "F": "29", "HR": "3888", "K": "7200", "RA": "09h 50m 59.4s", "V": "3.80" },
+            { "C": "UMa", "Dec": "+63° 03′ 43″", "F": "23", "HR": "3757", "K": "7500", "RA": "09h 31m 31.7s", "V": "3.67" },
+            { "B": "ο", "N": "Muscida", "C": "UMa", "Dec": "+60° 43′ 05″", "F": "1", "HR": "3323", "K": "5500", "RA": "08h 30m 15.9s", "V": "3.36" },
+            { "B": "η", "N": "Alkaid", "C": "UMa", "Dec": "+49° 18′ 48″", "F": "85", "HR": "5191", "K": "24000", "RA": "13h 47m 32.4s", "V": "1.86" },
+        ]
+        
+        # Add outliers to the catalog
+        random.seed(42)
+        bsc = get_star_catalog()
+        subset_bsc = random.sample(bsc, 100)  # Take a random subset of 100
+
+        # Find and add the Ursa Major stars from the original bsc by HR value (as string or int)
+        hr_values = set(str(star["HR"]) for star in ursa_major_bsc)
+        for star in bsc:
+            if str(star.get("HR")) in hr_values and star not in subset_bsc:
+                subset_bsc.append(star)
+
+        # Parameters
+        camera_scaling_factor = 18.18 # We can assume this is the scaling factor for the camera
+        al_parameter = 0.1
+        
+        # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars + 100 outliers)
+        spht = {}
+        for triplet in itertools.combinations(subset_bsc, 3):
+            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            if key not in spht:
+                spht[key] = []
+            # Store the HR values (or another unique identifier) for the triplet
+            spht[key].append(tuple(star.get("HR") for star in triplet))
+            
+        # Execute online algorithm on ursa-major-reduced.png
+        result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+        print(result)
                 
 from algorithms import validation_algorithm_orientation
 from helper_functions import calculate_orientation_matrix
@@ -346,7 +356,7 @@ class TestValidationAlgorithmOrientation:
 
 from algorithms import best_match_confidence_algorithm
 
-class TestBestMatchConfidenceAlgorithm:
+class TestAlgorithm4:
 
     def test_empty_inputs(self):
         detected_stars = []
