@@ -4,6 +4,7 @@ import numpy
 from helper_functions import * 
 import itertools
 from collections import defaultdict, Counter
+import cv2
 import random
 
 """
@@ -185,7 +186,46 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     >>> error < 0.01
     True
     """
-    pass
+    # calculate center of frame image
+    img_cv2 = cv2.imread(IMAGE_FILE)
+    center_x, center_y, _ = img_cv2.shape
+    center_x /= 2
+    center_y /= 2
+
+    # #define set ST0=S' - stars S transformed by T0
+    # temproray average focal lenght of COTS smartphone camera lenses.
+    focal_length = 2700
+    # stars_transformed = detect_stars
+    detected_stars_coord_vector = []
+    for i in range(len(detected_stars)):
+        dx = (detected_stars[i].get('x') - center_x) / focal_length
+        dy = (detected_stars[i].get('y') - center_y) / focal_length
+        norm = sqrt(dx**2 + dy**2 + 1)
+        # 3rd dimension is color channel
+        coord_vector = [dx/norm, dy/norm, 1/norm]
+        detected_stars_coord_vector.append(coord_vector)
+
+    detected_stars_rotated = []
+    for i in range(len(detected_stars_coord_vector)):
+        rotated_v = detected_stars_coord_vector[i] @ orientation_matrix
+        detected_stars_rotated.append(rotated_v)
+
+    # for each star s' in S' *search nearest neighbor* b' from BSC
+    # create L a tuple of all such subsets that will be like <s',b'>
+    nearest_neighbor_pairs = nearest_neighbor_srch(detected_stars_rotated)
+    # based on an "angular error" remove all pairs that exceed this error from L
+    angular_threshold = 1.5  # degrees
+    valid_pairs = []
+    # for s_prime_vec, catalog_star in nearest_neighbor_pairs:
+    eliminate_exceeding_pairs(nearest_neighbor_pairs,
+                              valid_pairs, angular_threshold, bsc_catalog)
+
+    # define ErrorEstimation to be weight root mean square over 3D distances between pairs in L
+    errorEstimation = compute_weighted_rms(valid_pairs, CONFIDENCE)
+
+    return errorEstimation
+
+CONFIDENCE = None  # used for storing confidence for Weighted RMS calculations
 
 # --- Algorithm 4 Implementation ---
 def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
@@ -222,9 +262,13 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
         confidence_score = max_count # This is the confidence as per Algorithm 4
         pixel_final_labels_with_confidence[frame_pixel_id] = (best_catalog_label_for_pixel, confidence_score)
 
+    # save for algorithm 3 calculations
+    global CONFIDENCE
+    CONFIDENCE = pixel_final_labels_with_confidence
+
     return pixel_final_labels_with_confidence
 
-
+IMAGE_FILE = 'test_image_2.png'
 if __name__ == "__main__":
     detected_stars = detect_stars("ursa-major-reduced.png")
     visualize_stars("ursa-major-reduced.png",detected_stars, "ursa-major-detected.png")
