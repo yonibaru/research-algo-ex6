@@ -4,8 +4,9 @@ import numpy
 from helper_functions import * 
 import itertools
 from collections import defaultdict, Counter
-import cv2
+import math
 import random
+import cv2
 
 """
 An implementation of the algorithms described in the paper:
@@ -154,7 +155,7 @@ def stars_identification(
 
 # --- Algorithm 3 Implementation ---
 
-def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC) -> float:
+def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC, image_file: Any) -> float:
     """
     Implements Algorithm 3: Validation Algorithm for the Reported Orientation.
     
@@ -187,7 +188,7 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     True
     """
     # calculate center of frame image
-    img_cv2 = cv2.imread(IMAGE_FILE)
+    img_cv2 = cv2.imread(image_file)
     center_x, center_y, _ = img_cv2.shape
     center_x /= 2
     center_y /= 2
@@ -200,7 +201,7 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     for i in range(len(detected_stars)):
         dx = (detected_stars[i].get('x') - center_x) / focal_length
         dy = (detected_stars[i].get('y') - center_y) / focal_length
-        norm = sqrt(dx**2 + dy**2 + 1)
+        norm = math.sqrt(dx**2 + dy**2 + 1)
         # 3rd dimension is color channel
         coord_vector = [dx/norm, dy/norm, 1/norm]
         detected_stars_coord_vector.append(coord_vector)
@@ -268,7 +269,6 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
 
     return pixel_final_labels_with_confidence
 
-IMAGE_FILE = 'test_image_2.png'
 if __name__ == "__main__":
     detected_stars = detect_stars("ursa-major-reduced.png")
     visualize_stars("ursa-major-reduced.png",detected_stars, "ursa-major-detected.png")
