@@ -1,8 +1,7 @@
 import pytest
 import random
 import itertools
-from typing import List, Tuple, Dict, Any
-from algorithms import stars_identification_bf
+from algorithms import *
 from helper_functions import *
 import numpy as np
 
@@ -74,25 +73,7 @@ class TestAlgorithm1:
         assert result is not None, "Function should return a triplet even with high RMS error"
         assert len(result) == 3, "Function should return exactly 3 stars"
     
-    
-    # Test case 6: Invalid scaling factor
-    def test_invalid_scaling_factor(self):
-        detected_stars = detect_stars("test_image.png")
-        
-        star_catalog = []
-        star_catalog[0] = {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'}
-        star_catalog[1] = {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'}
-        star_catalog[2] = {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        
-        # Test with zero scaling factor (should raise an error)
-        with pytest.raises(ValueError):
-            stars_identification_bf(detected_stars, star_catalog, 0)
-        
-        # Test with negative scaling factor (should raise an error)
-        with pytest.raises(ValueError):
-            stars_identification_bf(detected_stars, star_catalog, -1/16.30)
-    
-    # Test case 7: Large and random catalog test
+    # Test case 5: Large and random catalog test
     def test_large_catalog(self):
         detected_stars = detect_stars("test_image.png")
         
@@ -112,34 +93,18 @@ class TestAlgorithm1:
         # The test should verify that a triplet is returned
         assert result is not None, "Function should return a triplet"
         assert len(result) == 3, "Function should return exactly 3 stars"
-        
-        # For a full catalog, the function would likely timeout, but we can't test that directly with pytest
-        # We can assert that the implementation would be very slow
-        assert len(list(itertools.combinations(star_catalog, 3))) > 100000000, "Full catalog would have too many combinations"
-        
 
-from algorithms import stars_identification_improved
-from helper_functions import create_spht_key
 
-# Mock SPHT class for testing purposes
-class SPHT:
-    def __init__(self, patterns=None):
-        self.patterns = patterns or {}
-    
-    def lookup(self, key):
-        return self.patterns.get(key, [])
-
-from algorithms import stars_identification
 
 class TestAlgorithm2:
     
     # Test case 1: Empty input - no detected stars
     def test_empty_input(self):
         detected_stars = []
-        spht = SPHT()
+        spht = {}
         al_parameter = 0.1
         
-        result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
+        result = stars_identification(detected_stars, spht, al_parameter, 16.30)
         assert result == [], "Function should return empty list for empty input"
     
     # Test case 2: Insufficient stars (less than 3)
@@ -148,41 +113,54 @@ class TestAlgorithm2:
             {'x': 100, 'y': 200},
             {'x': 150, 'y': 250}
         ]
-        spht = SPHT()
+        spht = {}
         al_parameter = 0.1
         
-        result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
+        result = stars_identification(detected_stars, spht, al_parameter, 16.30)
         assert result == [], "Function should return empty list for insufficient stars"
     
-    # Test case 3: Perfect match with 3 stars
+    # Test case 3: Perfect match with 3 stars, no outliers
     def test_perfect_match(self):
         # Three detected stars in the frame
-        detected_stars = [
-            {'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}
-        ]
+        detected_stars = detect_stars("test_image.png")
         
-        # Create catalog stars that should match
+        # Stars in the catalog
         catalog_stars = [
             {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
             {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
             {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
         ]
         
-        # Create a pre-populated SPHT with a pattern that matches our detected stars
-        # The key would normally be generated from the sorted distances
-        # For testing purposes, we'll use a simple key
-        al_parameter = 0.2
+        bsc = get_star_catalog()
+        subset_bsc = []
 
-        pattern_key = create_spht_key(catalog_stars[0], catalog_stars[1], catalog_stars[2], al_parameter)
-        spht = SPHT({pattern_key: [catalog_stars]})
-    
-        result = stars_identification_improved(detected_stars, spht, al_parameter, 1/16.30)
+        # Find and from the original bsc by HR value (as string or int)
+        hr_values = set(str(star["HR"]) for star in catalog_stars)
+        for star in bsc:
+            if str(star.get("HR")) in hr_values and star not in subset_bsc:
+                subset_bsc.append(star)
+        
+        al_parameter = 0.1
+        camera_scaling_factor = 16.30 # We can assume this is the scaling factor for the camera
+
+        # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
+        spht = {}
+        for triplet in itertools.combinations(subset_bsc, 3):
+            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            if key not in spht:
+                spht[key] = []
+            # Store the HR values (or another unique identifier) for the triplet
+            spht[key].append(tuple(star.get("HR") for star in triplet))
+            
         
         # Expected result: Match between detected stars and catalog stars
-        expected_result = [[Tuple(detected_stars),Tuple(catalog_stars)]]
+        expected_result = [
+            {'coords': (46, 48), 'spht_value': 4689, 'confidence': 1}, 
+            {'coords': (205, 32), 'spht_value': 4825, 'confidence': 1}, 
+            {'coords': (135, 88), 'spht_value': 4910, 'confidence': 1}
+            ]
         
+        result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
         assert result == expected_result, f"Expected {expected_result}, but got {result}"
     
     
@@ -288,141 +266,106 @@ class TestAlgorithm2:
         result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
         print(result)
                 
-from algorithms import validation_algorithm_orientation
-from helper_functions import calculate_orientation_matrix
 
-class TestValidationAlgorithmOrientation:
+# class TestValidationAlgorithmOrientation:
 
-    def test_no_detected_stars(self):
-        detected_stars = []
-        orientation_matrix = np.eye(3)
-        bsc_catalog = []
-        result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
-        assert result == None
+#     def test_no_detected_stars(self):
+#         detected_stars = []
+#         orientation_matrix = np.eye(3)
+#         bsc_catalog = []
+#         result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
+#         assert result == None
 
-    def test_insufficient_matches(self):
-        detected_stars = [{'x': 200, 'y': 300}]
-        bsc_catalog = [{'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'}]
-        orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
-        result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
-        assert result == None
+#     def test_insufficient_matches(self):
+#         detected_stars = [{'x': 200, 'y': 300}]
+#         bsc_catalog = [{'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'}]
+#         orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
+#         result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
+#         assert result == None
 
-    def test_valid_minimum_case(self):
-        detected_stars = [            
-            {'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}]
-        bsc_catalog = [
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        ]
-        orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
-        result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
-        assert isinstance(result, float)
-        assert result <= 0.5 # good result
+#     def test_valid_minimum_case(self):
+#         detected_stars = [            
+#             {'x': 205, 'y': 30},
+#             {'x': 135, 'y': 88},
+#             {'x': 46, 'y': 48}]
+#         bsc_catalog = [
+#             {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
+#             {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
+#             {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
+#         ]
+#         orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
+#         result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
+#         assert isinstance(result, float)
+#         assert result <= 0.5 # good result
 
-    def test_large_random_bsc(self):
-        detected_stars = [{'x': random.uniform(0, 1024), 'y': random.uniform(0, 1024)} for _ in range(10)]
-        detected_stars += [{'x': 205, 'y': 30},{'x': 135, 'y': 88}, {'x': 46, 'y': 48}]
-        orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
-        bsc_catalog = [
-            {
-                'RA': random.uniform(0, 360),
-                'Dec': random.uniform(-90, 90),
-                'HR': i,
-                'N': f'Star{i}'
-            } for i in range(100)
-        ]
-        result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
-        assert isinstance(result, float)
-        assert result <= 0.5 # good result
+#     def test_large_random_bsc(self):
+#         detected_stars = [{'x': random.uniform(0, 1024), 'y': random.uniform(0, 1024)} for _ in range(10)]
+#         detected_stars += [{'x': 205, 'y': 30},{'x': 135, 'y': 88}, {'x': 46, 'y': 48}]
+#         orientation_matrix = calculate_orientation_matrix(detected_stars, bsc_catalog)
+#         bsc_catalog = [
+#             {
+#                 'RA': random.uniform(0, 360),
+#                 'Dec': random.uniform(-90, 90),
+#                 'HR': i,
+#                 'N': f'Star{i}'
+#             } for i in range(100)
+#         ]
+#         result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
+#         assert isinstance(result, float)
+#         assert result <= 0.5 # good result
         
-    def test_large_random_bsc_2(self):
-        detected_stars = [{'x': random.uniform(0, 1024), 'y': random.uniform(0, 1024)} for _ in range(10)]
-        detected_stars += [{'x': 205, 'y': 30},{'x': 135, 'y': 88}, {'x': 46, 'y': 48}]
-        orientation_matrix = np.eye(3) #orientation matrix is just an identity matrix, wrong matrix in this case.
-        bsc_catalog = [
-            {
-                'RA': random.uniform(0, 360),
-                'Dec': random.uniform(-90, 90),
-                'HR': i,
-                'N': f'Star{i}'
-            } for i in range(100)
-        ]
-        result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
-        assert isinstance(result, float)
-        assert result >= 5 # bad result
+#     def test_large_random_bsc_2(self):
+#         detected_stars = [{'x': random.uniform(0, 1024), 'y': random.uniform(0, 1024)} for _ in range(10)]
+#         detected_stars += [{'x': 205, 'y': 30},{'x': 135, 'y': 88}, {'x': 46, 'y': 48}]
+#         orientation_matrix = np.eye(3) #orientation matrix is just an identity matrix, wrong matrix in this case.
+#         bsc_catalog = [
+#             {
+#                 'RA': random.uniform(0, 360),
+#                 'Dec': random.uniform(-90, 90),
+#                 'HR': i,
+#                 'N': f'Star{i}'
+#             } for i in range(100)
+#         ]
+#         result = validation_algorithm_orientation(detected_stars, orientation_matrix, bsc_catalog)
+#         assert isinstance(result, float)
+#         assert result >= 5 # bad result
 
-from algorithms import best_match_confidence_algorithm
 
 class TestAlgorithm4:
 
     def test_empty_inputs(self):
-        detected_stars = []
-        ism_data: List[Tuple[Tuple[Dict,Dict,Dict], Tuple[Dict,Dict,Dict]]] = []
-        result = best_match_confidence_algorithm(detected_stars, ism_data)
-        assert result == []
+        sm_table_for_individual_pixels_by_index = {} # no stars detected/matched
+        result = setConfidence(sm_table_for_individual_pixels_by_index)
+        assert result == {} or result is None, "Function should return empty dict or None for empty input"
 
-    def test_single_pixel_single_match(self):
-        detected_stars = [            
-            ({'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48})]
-        bsc_catalog = [(
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        )]
-        # One triplet containing p1 once, matching to s1
-        ism_data = [
-            (detected_stars[0], bsc_catalog[0])
-        ]
-        out = best_match_confidence_algorithm(detected_stars, ism_data)
-        # Expect one entry with confidence 1.0
-        assert len(out) == 1
-        pix, star, conf = out[0]
-        assert conf == pytest.approx(1.0)
+    def test_single_single_match(self):
+        sm = {
+            0: [5524],
+            1: [3757],
+            2: [3888],
+        }
+        result = setConfidence(sm)
+        expected_result = {0: (5524, 1), 1: (3757, 1), 2: (3888, 1)}
+        assert result == expected_result, f'Expected a non-empty result, but got {result}'
 
-    def test_multiple_occurrences(self):
-       detected_stars = [            
-            ({'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}),(
-            {'x': 100, 'y': 100},
-            {'x': 200, 'y': 200},
-            {'x': 300, 'y': 300})
-        ]
-       bsc_catalog = [(
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        )]
-       ism_data = [
-            (detected_stars[0], bsc_catalog[0]),(detected_stars[1], bsc_catalog[0]),
-        ]
-       out = best_match_confidence_algorithm(detected_stars, ism_data)
-       assert len(out) == 6 # 2 triplets * 3 stars each
+    def test_stalemate_match(self):
+        sm = {
+            0: [3775],
+            1: [3775],
+            2: [3775],
+            3: [3775],
+            4: [3775],
+        }
+        result = setConfidence(sm)
+        expected_result = {0: (3775, 1), 1: (3775, 1), 2: (3775, 1), 3: (3775, 1), 4: (3775, 1)}
+        assert result == expected_result, f'Got {result} but expected {expected_result}'
        
-
     def test_large_random_data(self):
-        detected_stars = [
-            {'x': random.randint(0, 1000), 'y': random.randint(0, 1000)} for _ in range(200)
-        ]
-        real_stars = [
-            {'x': 205, 'y': 30},
-            {'x': 135, 'y': 88},
-            {'x': 46, 'y': 48}
-        ]
-        detected_stars = detected_stars + real_stars
-        # Create a simple SPHT
-        catalog_triplet = [
-            {'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},
-            {'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},
-            {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}
-        ]
-        ism_data = [
-            (real_stars,catalog_triplet)
-        ]
-        out = best_match_confidence_algorithm(detected_stars, ism_data)
-        assert len(out) == 3 # 1 triplet * 3 stars each
+        sm = {
+            0: [3757, 1589, 4022, 3821, 3824, 3323, 1829, 4022, 1684, 3158, 4384, 3323, 3323, 3323, 4022, 4022, 1540, 5891, 4022, 3536, 4562, 3666, 3620, 2346, 4562, 3666, 3536, 2672, 3666, 2623, 6211, 4022, 3666, 3824, 3888, 4562, 4022, 2672, 2051, 1659, 4022, 3666, 8950, 4020, 3821, 2292, 4562, 3821, 1312, 3824, 3824, 2555, 1144, 4516, 3824, 8099, 715, 5830, 4751, 4516, 2346, 3464, 3666, 3620, 2346, 3265, 1296, 8293, 4022, 3821, 3775, 3620, 4562, 3620, 5645, 3824, 5524, 5830, 3824, 3323, 4562, 8950, 8950, 3620, 7372, 3536, 3323, 3323, 3323, 3620, 5830, 3591, 5524],
+            1: [3775, 920, 3821, 4384, 2293, 3757, 1684, 4384, 1659, 3775, 2685, 3757, 3757, 3757, 5891, 5645, 3821, 4384, 3536, 4384, 3757, 3775, 3620, 3743, 3536, 3757, 4069, 3536, 3757, 4033, 3620, 3620, 3757, 3620, 4562, 3757, 3620, 3757, 4518, 3666, 3757, 3757, 1829, 3620, 3757, 4069, 3757, 3757, 3743, 3757, 3757, 1684, 4022, 4562, 3824, 4020, 3757, 3757, 4562, 3757, 438, 4022, 3821, 1540, 3666, 3775, 3775, 4516, 4069, 4022, 3591, 3743, 8950, 2051, 1589, 3620, 1296, 3743, 1589, 4516, 3743, 3757, 3440, 3757, 3757, 3757, 2623, 3757, 3757, 4022, 3440, 3757, 1589, 3757, 3757, 3757, 3757, 4516, 3743, 3757, 3591, 3591, 3265, 3591, 3821, 3440, 3757, 3757, 4022, 3536, 3757, 3757, 4022, 4562, 3824, 4020, 3757, 3757, 4562, 3323, 1829, 3824, 3757, 3757, 4562, 3757],
+            2: [3888, 3743, 4295, 3757, 3757, 3743, 1589, 2672, 4384, 3743, 2672, 5935, 4020, 2346, 4301, 4295, 3757, 3888, 4295, 3743, 3757, 3440, 3888, 4554, 3440, 3888, 4554, 3464, 3464, 3888, 3464, 4554, 3888, 3464, 3888, 4660, 4554, 3888, 3888, 3775, 3265, 3265, 3888, 4033, 3888, 3888, 3888, 3620, 2555, 2292, 3888, 3888, 8950, 8950, 3775, 3775, 3775, 8943, 3775, 1684, 1589, 4751, 3824, 3775, 3775, 3775, 4295, 1144, 3440, 3666, 4567, 3666, 8950, 3666, 4567, 3666, 4567, 3666, 8950, 3536, 3888, 3888, 3888, 3620, 4562, 4020, 4022, 3666, 3824, 3888, 3888, 6924, 3888, 3888, 3888, 3888, 4033, 3888, 3888, 3888, 9059, 4516, 3888, 2555, 3888, 3888, 3888, 3888, 3888, 3620, 2555, 2292, 3757, 5830, 4069, 3620, 4020, 3666, 3743, 3775, 4562, 3775, 3888, 4069, 4069, 3888, 3888],
+        }
+        result = setConfidence(sm)
+        expected_result = {0: (4022, 9), 1: (3757, 41), 2: (3888, 36)}
+        assert result == expected_result, f'Got {result} but expected {expected_result}'

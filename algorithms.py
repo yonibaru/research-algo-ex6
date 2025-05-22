@@ -340,25 +340,7 @@ if __name__ == "__main__":
         
     # Execute online algorithm on ursa-major-reduced.png
     result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
-    print(result)
-    
-    
-    # # For each triplet in detected_stars, create a key and put it in spht
-    # for triplet_indices in itertools.combinations(range(len(detected_stars)), 3):
-    #     triplet = tuple(detected_stars[i] for i in triplet_indices)
-    #     key = create_spht_key(triplet, al_parameter, camera_scaling_factor)
-    #     # Only create a key if the triplet matches the true stars (by coordinates)
-    #     star_coords = [
-    #         {'x': 46, 'y': 48},
-    #         {'x': 205, 'y': 32},
-    #         {'x': 135, 'y': 88}
-    #     ]
-    #     triplet_coords = [{ 'x': t['x'], 'y': t['y'] } for t in triplet]
-    #     if sorted(triplet_coords, key=lambda d: (d['x'], d['y'])) == sorted(star_coords, key=lambda d: (d['x'], d['y'])):
-    #         spht[key] = [
-    #             (star_catalog[0]['HR'], star_catalog[1]['HR'], star_catalog[2]['HR'])
-    #         ]
-    # print(spht)
-    # Call the stars_identification function
-    # result = stars_identification(detected_stars, spht, al_parameter, camera_scaling_factor)
     # print(result)
+    
+    
+
