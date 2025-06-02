@@ -12,6 +12,7 @@ Star = Tuple[Any, float, float] # (ID, RA_degrees, DEC_degrees)
 Frame = List[Pixel]
 BSC = List[dict]
 SPHT = Any
+RaDec = None
 
 def get_star_catalog(file_path='bsc5-short.json') -> BSC:
     """
@@ -255,7 +256,9 @@ def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)
 
     # Step 2: Convert the BSC star catalog (RA/Dec) to unit vectors in the inertial frame
     inertial_vectors = np.array([ra_dec_to_inertial_vector(star['RA'], star['Dec']) for star in bsc_matches])
-
+    global RaDec
+    RaDec = inertial_vectors  # save Ra/Dec calculations for further uses
+    
     # Step 3: Use the Kabsch algorithm to find the optimal rotation matrix
     def kabsch_algorithm(A, B):
         """Find the rotation matrix that minimizes the RMSD between two sets of points A and B."""
@@ -271,7 +274,20 @@ def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)
 
 
 def nearest_neighbor_srch(detected_stars_rotated: List):
-    print(f"radec: {RaDec}")
+    """
+    Find the nearest neighbor for each star that was rotated according to the applied rotation matrix 
+    by construction a KDTree and using the "RaDec" calculations of each star with a 1.5deg error threshold
+    (due to camera distortion)
+
+    Parameters:
+    - detected_stars_rotated : Frame of detected stars after rotation matrix applied
+
+    Returns:
+    - nearest_matches : nearest_matches : List of nearest matches of each star:
+        - vec : the vector of the star in detected_stars_rotated
+        - matched_star : match of the star in the BSC catalog
+        - dist : distance of the nearest neighbor
+    """
     tree = KDTree(RaDec)
     nearest_matches = []
     max_angular_error_deg = 1.5  # adjustable threshold in degrees
@@ -289,11 +305,25 @@ def nearest_neighbor_srch(detected_stars_rotated: List):
 
 
 def angular_error(vec1, vec2):
+    """
+    Compute the angular distance between two vectors in degrees
+
+    Parameters:
+    - vec1 : s' from S', the transormed star vector after RTA application
+    - vec2 : b' from BSC, corresponding vector from the BSC catalog
+
+    Returns:
+    math.degrees() of the Arccosine of the dot product
+    """
     dot_product = np.clip(np.dot(vec1, vec2), -1.0, 1.0)
     return math.degrees(math.acos(dot_product))
 
 
 def eliminate_exceeding_pairs(nearest_neighbor_pairs: list, valid_pairs, angular_threshold, bsc_catalog):
+    """
+    Create list of pairs from the nearest neighbor set that are withing the angular threshold
+    (create L<s',b'> from S')
+    """
     for s_prime_vec, catalog_star in nearest_neighbor_pairs:
         catalog_index = catalog_star['matched_star']
         catalog_vec = RaDec[catalog_index]
@@ -304,6 +334,9 @@ def eliminate_exceeding_pairs(nearest_neighbor_pairs: list, valid_pairs, angular
 
 
 def compute_weighted_rms(valid_pairs, confidence_scores):
+    """
+    Go over the valid pairs in L and compute their RootMeanSquare with accordance to the confidence scores.
+    """
     if not valid_pairs:
         return float('inf')
 
