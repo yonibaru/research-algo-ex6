@@ -187,6 +187,10 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     >>> error < 0.01
     True
     """
+    if detected_stars == []:
+        return None
+    if BSC == []:
+        return None
     # calculate center of frame image
     img_cv2 = cv2.imread(image_file)
     center_x, center_y, _ = img_cv2.shape
