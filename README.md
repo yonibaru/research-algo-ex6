@@ -6,3 +6,6 @@ For creating tests:
 
 https://claude.ai/share/afda9ff8-02a5-4914-bb84-94400ff6e1f6
 
+https://chatgpt.com/share/68331cca-ea2c-800f-a92e-7039a6bf2bc9 - accessing the RaDec parameter globally
+
+https://chatgpt.com/share/68331d16-8994-800f-b895-bc3b1b0ff0db - helper functions algo 3
