@@ -5,6 +5,7 @@ import cv2
 import itertools
 from typing import List, Tuple, Any
 import random
+from scipy.spatial import KDTree
 
 # Define placeholder types for clarity
 Pixel = Tuple[float, float] # (x, y) coordinate
@@ -137,11 +138,11 @@ def create_spht_key(pixel_triplet_coords: Tuple[dict, dict, dict], al_parameter:
     
     pixel_distances = sorted((d12, d13, d23))
     
-    key = tuple((d / al_parameter) * al_parameter for d in pixel_distances) # This rounding must match SPHT key generation exactly
+    key = tuple((d * al_parameter) for d in pixel_distances) # This rounding must match SPHT key generation exactly
     rounded_key = tuple(round(d, 0) for d in key) # Round to 6 decimal places
     return tuple(sorted(rounded_key)) # Ensure sorted if SPHT keys are always sorted
 
-def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_parameter: float,camera_scaling_factor:float=1.0) -> tuple:
+def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_parameter: float) -> tuple:
     """
     Calculates pairwise distances, sorts, scales, rounds, and returns an SPHT key.
     Args:
@@ -161,7 +162,7 @@ def create_spht_key_offline(bsc_triplet_coords: Tuple[dict, dict, dict], al_para
     d13 = calculate_angular_distance(p1[1], p1[0], p3[1], p3[0]) 
     d23 = calculate_angular_distance(p2[1], p2[0], p3[1], p3[0]) 
     ang_distances = sorted((d12, d13, d23))
-    key = tuple((d / al_parameter) * al_parameter for d in ang_distances) 
+    key = tuple((d * al_parameter) for d in ang_distances) 
     rounded_key = tuple(round(d, 0) for d in key) 
     return tuple(sorted(rounded_key)) # Ensure sorted if SPHT keys are always sorted
 
@@ -350,3 +351,13 @@ def compute_weighted_rms(valid_pairs, confidence_scores):
         weights.append(confidence)
 
     return np.sqrt(sum(weighted_errors) / sum(weights))
+
+def build_spht_offline(bsc: dict, al_parameter: float=1) -> dict:
+    spht = {}
+    for triplet in itertools.combinations(bsc, 3):
+        key = create_spht_key_offline(triplet, al_parameter)
+        if key not in spht:
+            spht[key] = []
+        # Store the HR values (or another unique identifier) for the triplet
+        spht[key].append(tuple(star.get("HR") for star in triplet))
+    return spht

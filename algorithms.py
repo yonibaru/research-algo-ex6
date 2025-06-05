@@ -7,6 +7,7 @@ from collections import defaultdict, Counter
 import math
 import random
 import cv2
+from helper_functions import build_spht_offline
 
 """
 An implementation of the algorithms described in the paper:
@@ -115,6 +116,26 @@ def stars_identification(
         - 'confidence': The confidence score (integer count).
         Stars for which no identification could be made might be omitted or included
         with spht_value=None and confidence=0.
+    Example:
+        >>> detected_stars = detect_stars("test_image.png")
+        >>> catalog_stars = [{'RA': 184.976667, 'Dec': -0.666944, 'HR': 4689, 'N': 'Zaniah'},{'RA': 190.415, 'Dec': -1.449444, 'HR': 4825, 'N': 'Porrima'},{'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}]
+        >>> bsc = get_star_catalog()
+        >>> subset_bsc = []
+        >>> hr_values = set(str(star["HR"]) for star in catalog_stars)
+        >>> for star in bsc:
+        >>>     if str(star.get("HR")) in hr_values and star not in subset_bsc:
+        >>>         subset_bsc.append(star)
+        >>> al_parameter = 1
+        >>> camera_scaling_factor = 16.30 # We can assume this is the scaling factor for the camera
+        >>> spht = {}
+        >>> for triplet in itertools.combinations(subset_bsc, 3):
+            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            if key not in spht:
+                spht[key] = []
+            spht[key].append(tuple(star.get("HR") for star in triplet))
+        >>> expected_result = [{'coords': (46, 48), 'spht_value': 4689, 'confidence': 1}, {'coords': (205, 32), 'spht_value': 4825, 'confidence': 1}, {'coords': (135, 88), 'spht_value': 4910, 'confidence': 1}]
+        >>> assert result == expected_result
+        True
     """
     
     sm_table_for_individual_pixels_by_index = defaultdict(list) # Keys will be indices
@@ -249,6 +270,12 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
     Returns:
         Dictionary mapping each individual frame pixel ID (index) 
         to (best_catalog_star_label, confidence_score)
+    
+    Example:
+       >>> sm = {0: [1234,5524,4222,1234,1234],1:[3757],2:[3888,3888]}
+       >>> result = setConfidence(sm)
+       >>> result == {0: (1234, 3), 1: (3757, 1), 2: (3888, 2)}
+       True
     """
     pixel_final_labels_with_confidence = {}
 
@@ -257,7 +284,7 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
             pixel_final_labels_with_confidence[frame_pixel_id] = (None, 0) # No candidates
             continue
 
-        label_counts = Counter(candidate_catalog_labels_for_pixel)
+        label_counts = Counter(candidate_catalog_labels_for_pixel) 
         
         if not label_counts: # Should be caught by the check above, but good for safety
              pixel_final_labels_with_confidence[frame_pixel_id] = (None, 0)
@@ -331,20 +358,15 @@ if __name__ == "__main__":
 
     # Parameters
     camera_scaling_factor = 18.18
-    al_parameter = 0.1
+    al_parameter = 1
     
     # Build the SPHT (Star Pattern Hash Table) for all triplets in subset_bsc
-    spht = {}
-    for triplet in itertools.combinations(subset_bsc, 3):
-        key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
-        if key not in spht:
-            spht[key] = []
-        # Store the HR values (or another unique identifier) for the triplet
-        spht[key].append(tuple(star.get("HR") for star in triplet))
+    spht = build_spht_offline(subset_bsc, al_parameter)
         
     # Execute online algorithm on ursa-major-reduced.png
     result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
-    # print(result)
+    print(result)
     
     
+
 

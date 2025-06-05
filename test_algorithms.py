@@ -4,7 +4,7 @@ import itertools
 from algorithms import *
 from helper_functions import *
 import numpy as np
-
+from math import radians, cos, sin
 
 class TestAlgorithm1:
     
@@ -102,7 +102,7 @@ class TestAlgorithm2:
     def test_empty_input(self):
         detected_stars = []
         spht = {}
-        al_parameter = 0.1
+        al_parameter = 1
         
         result = stars_identification(detected_stars, spht, al_parameter, 16.30)
         assert result == [], "Function should return empty list for empty input"
@@ -114,7 +114,7 @@ class TestAlgorithm2:
             {'x': 150, 'y': 250}
         ]
         spht = {}
-        al_parameter = 0.1
+        al_parameter = 1
         
         result = stars_identification(detected_stars, spht, al_parameter, 16.30)
         assert result == [], "Function should return empty list for insufficient stars"
@@ -140,7 +140,7 @@ class TestAlgorithm2:
             if str(star.get("HR")) in hr_values and star not in subset_bsc:
                 subset_bsc.append(star)
         
-        al_parameter = 0.1
+        al_parameter = 1
         camera_scaling_factor = 16.30 # We can assume this is the scaling factor for the camera
 
         # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
@@ -199,7 +199,7 @@ class TestAlgorithm2:
 
         # Parameters
         camera_scaling_factor = 18.18 # We can assume this is the scaling factor for the camera
-        al_parameter = 0.1
+        al_parameter = 1
         
         # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
         spht = {}
@@ -251,7 +251,7 @@ class TestAlgorithm2:
 
         # Parameters
         camera_scaling_factor = 18.18 # We can assume this is the scaling factor for the camera
-        al_parameter = 0.1
+        al_parameter = 1
         
         # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars + 100 outliers)
         spht = {}
