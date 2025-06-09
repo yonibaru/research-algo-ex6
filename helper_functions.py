@@ -13,7 +13,6 @@ Star = Tuple[Any, float, float] # (ID, RA_degrees, DEC_degrees)
 Frame = List[Pixel]
 BSC = List[dict]
 SPHT = Any
-RaDec = None
 
 def get_star_catalog(file_path='bsc5-short.json') -> BSC:
     """
@@ -221,7 +220,7 @@ def visualize_stars(image_path, stars, output_path="stars_detected.png"):
 
     return image
 
-def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)):
+def calculate_orientation_matrix(stars, bsc_matches,  raDecCalculation, image_resolution=(250, 134)):
     """
     Calculate the orientation matrix from the detected stars and the star catalog.
 
@@ -257,8 +256,7 @@ def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)
 
     # Step 2: Convert the BSC star catalog (RA/Dec) to unit vectors in the inertial frame
     inertial_vectors = np.array([ra_dec_to_inertial_vector(star['RA'], star['Dec']) for star in bsc_matches])
-    global RaDec
-    RaDec = inertial_vectors  # save Ra/Dec calculations for further uses
+    raDecCalculation = inertial_vectors
     
     # Step 3: Use the Kabsch algorithm to find the optimal rotation matrix
     def kabsch_algorithm(A, B):
@@ -274,7 +272,7 @@ def calculate_orientation_matrix(stars, bsc_matches, image_resolution=(250, 134)
     return R
 
 
-def nearest_neighbor_srch(detected_stars_rotated: List):
+def nearest_neighbor_srch(detected_stars_rotated: List, raDecCalculation):
     """
     Find the nearest neighbor for each star that was rotated according to the applied rotation matrix 
     by construction a KDTree and using the "RaDec" calculations of each star with a 1.5deg error threshold
@@ -289,7 +287,7 @@ def nearest_neighbor_srch(detected_stars_rotated: List):
         - matched_star : match of the star in the BSC catalog
         - dist : distance of the nearest neighbor
     """
-    tree = KDTree(RaDec)
+    tree = KDTree(raDecCalculation)
     nearest_matches = []
     max_angular_error_deg = 1.5  # adjustable threshold in degrees
     # convert to Euclidean
@@ -320,14 +318,14 @@ def angular_error(vec1, vec2):
     return math.degrees(math.acos(dot_product))
 
 
-def eliminate_exceeding_pairs(nearest_neighbor_pairs: list, valid_pairs, angular_threshold, bsc_catalog):
+def eliminate_exceeding_pairs(nearest_neighbor_pairs: list, valid_pairs, angular_threshold, bsc_catalog, raDecCalculation):
     """
     Create list of pairs from the nearest neighbor set that are withing the angular threshold
     (create L<s',b'> from S')
     """
     for s_prime_vec, catalog_star in nearest_neighbor_pairs:
         catalog_index = catalog_star['matched_star']
-        catalog_vec = RaDec[catalog_index]
+        catalog_vec = raDecCalculation[catalog_index]
 
         error_angle = angular_error(s_prime_vec, catalog_vec)
         if error_angle <= angular_threshold:
