@@ -146,7 +146,7 @@ class TestAlgorithm2:
         # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
         spht = {}
         for triplet in itertools.combinations(subset_bsc, 3):
-            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            key = create_spht_key_offline(triplet, al_parameter)
             if key not in spht:
                 spht[key] = []
             # Store the HR values (or another unique identifier) for the triplet
@@ -204,7 +204,7 @@ class TestAlgorithm2:
         # Build the SPHT (Star Pattern Hash Table) for all possible triplets in subset_bsc (14 stars only)
         spht = {}
         for triplet in itertools.combinations(subset_bsc, 3):
-            key = create_spht_key_offline(triplet, al_parameter,camera_scaling_factor)
+            key = create_spht_key_offline(triplet, al_parameter)
             if key not in spht:
                 spht[key] = []
             # Store the HR values (or another unique identifier) for the triplet
