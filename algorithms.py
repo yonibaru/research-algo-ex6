@@ -170,13 +170,13 @@ def stars_identification(
         }
         final_output_list.append(formatted_entry)
                     
-    return final_output_list, confidence_results_by_index
+    return final_output_list
 
 
 
 # --- Algorithm 3 Implementation ---
 
-def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC, image_file: Any, raDecCalculation, confidence) -> float:
+def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC, image_file: Any, raDecCalculation, confidence, focal_length=2700, angular_threshold = 1.5) -> float:
     """
     Implements Algorithm 3: Validation Algorithm for the Reported Orientation.
     
@@ -219,8 +219,6 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     center_y /= 2
 
     # #define set ST0=S' - stars S transformed by T0
-    # temproray average focal lenght of COTS smartphone camera lenses.
-    focal_length = 2700
     # stars_transformed = detect_stars
     detected_stars_coord_vector = []
     for i in range(len(detected_stars)):
@@ -240,14 +238,18 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
     # create L a tuple of all such subsets that will be like <s',b'>
     nearest_neighbor_pairs = nearest_neighbor_srch(detected_stars_rotated, raDecCalculation)
     # based on an "angular error" remove all pairs that exceed this error from L
-    angular_threshold = 1.5  # degrees
     valid_pairs = []
     # for s_prime_vec, catalog_star in nearest_neighbor_pairs:
     eliminate_exceeding_pairs(nearest_neighbor_pairs,
                               valid_pairs, angular_threshold, bsc_catalog, raDecCalculation)
 
+    # Build a lookup dictionary keyed by coordinates
+    confidence_scores_by_coords = {
+        entry["coords"]: entry["confidence"]
+        for entry in confidence
+    }
     # define ErrorEstimation to be weight root mean square over 3D distances between pairs in L
-    errorEstimation = compute_weighted_rms(valid_pairs, confidence)
+    errorEstimation = compute_weighted_rms(valid_pairs, confidence_scores_by_coords)
 
     return errorEstimation
 
@@ -358,5 +360,5 @@ if __name__ == "__main__":
     spht = build_spht_offline(subset_bsc, al_parameter)
         
     # Execute online algorithm on ursa-major-reduced.png
-    result, confidence_scores = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+    result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
     print(result)
