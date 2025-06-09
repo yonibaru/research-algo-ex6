@@ -170,13 +170,13 @@ def stars_identification(
         }
         final_output_list.append(formatted_entry)
                     
-    return final_output_list
+    return final_output_list, confidence_results_by_index
 
 
 
 # --- Algorithm 3 Implementation ---
 
-def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC, image_file: Any) -> float:
+def validation_algorithm_orientation(detected_stars: List[dict], orientation_matrix: numpy.ndarray, bsc_catalog: BSC, image_file: Any, raDecCalculation, confidence) -> float:
     """
     Implements Algorithm 3: Validation Algorithm for the Reported Orientation.
     
@@ -238,20 +238,18 @@ def validation_algorithm_orientation(detected_stars: List[dict], orientation_mat
 
     # for each star s' in S' *search nearest neighbor* b' from BSC
     # create L a tuple of all such subsets that will be like <s',b'>
-    nearest_neighbor_pairs = nearest_neighbor_srch(detected_stars_rotated)
+    nearest_neighbor_pairs = nearest_neighbor_srch(detected_stars_rotated, raDecCalculation)
     # based on an "angular error" remove all pairs that exceed this error from L
     angular_threshold = 1.5  # degrees
     valid_pairs = []
     # for s_prime_vec, catalog_star in nearest_neighbor_pairs:
     eliminate_exceeding_pairs(nearest_neighbor_pairs,
-                              valid_pairs, angular_threshold, bsc_catalog)
+                              valid_pairs, angular_threshold, bsc_catalog, raDecCalculation)
 
     # define ErrorEstimation to be weight root mean square over 3D distances between pairs in L
-    errorEstimation = compute_weighted_rms(valid_pairs, CONFIDENCE)
+    errorEstimation = compute_weighted_rms(valid_pairs, confidence)
 
     return errorEstimation
-
-CONFIDENCE = None  # used for storing confidence for Weighted RMS calculations
 
 # --- Algorithm 4 Implementation ---
 def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
@@ -293,10 +291,6 @@ def setConfidence(sm_table_individual_pixels: dict[int, List[str]]) -> dict:
         best_catalog_label_for_pixel, max_count = label_counts.most_common(1)[0]
         confidence_score = max_count # This is the confidence as per Algorithm 4
         pixel_final_labels_with_confidence[frame_pixel_id] = (best_catalog_label_for_pixel, confidence_score)
-
-    # save for algorithm 3 calculations
-    global CONFIDENCE
-    CONFIDENCE = pixel_final_labels_with_confidence
 
     return pixel_final_labels_with_confidence
 
@@ -364,9 +358,5 @@ if __name__ == "__main__":
     spht = build_spht_offline(subset_bsc, al_parameter)
         
     # Execute online algorithm on ursa-major-reduced.png
-    result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
+    result, confidence_scores = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
     print(result)
-    
-    
-
-
