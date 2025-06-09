@@ -295,18 +295,22 @@ class TestValidationAlgorithmOrientation:
                        {'RA': 190.415, 'Dec': -1.449444,
                            'HR': 4825, 'N': 'Porrima'},
                        {'RA': 193.900833, 'Dec': 3.3975, 'HR': 4910, 'N': 'Auva'}]
+        raDecCalculations = [make_unit_vector(star['RA'], star['Dec']) for star in bsc_catalog]
         result = validation_algorithm_orientation(
-            detected_stars, orientation_matrix, bsc_catalog, "test_image_black.jpg")
+            detected_stars, orientation_matrix, bsc_catalog, "test_image_black.jpg", raDecCalculation=raDecCalculations, confidence=[])
         assert result == None
 
     def test_insufficient_matches(self):
         detected_stars = [{'x': 200, 'y': 300}]
         bsc_catalog = [{'RA': 184.976667, 'Dec': -
                         0.666944, 'HR': 4689, 'N': 'Zaniah'}]
+        raDecCalculations = [make_unit_vector(star['RA'], star['Dec']) for star in bsc_catalog]
         orientation_matrix = calculate_orientation_matrix(
-            detected_stars, bsc_catalog)
+            detected_stars, bsc_catalog, raDecCalculations)
+        spht = {}
+        confidence = stars_identification(detected_stars, spht, 1.5, 16.16)
         result = validation_algorithm_orientation(
-            detected_stars, orientation_matrix, bsc_catalog, "test_image_2.png")
+            detected_stars, orientation_matrix, bsc_catalog, "test_image_2.png", raDecCalculations, confidence)
         assert result == float('inf')
 
     def test_large_random_bsc(self):
@@ -324,8 +328,10 @@ class TestValidationAlgorithmOrientation:
                 'N': f'Star{i}'
             } for i in range(100)
         ]
+        raDecCalculations = [make_unit_vector(star['RA'], star['Dec']) for star in bsc_catalog]
+        confidence = stars_identification(detected_stars, spht={}, al_parameter=0.1, camera_scaling_factor=16.16)
         result = validation_algorithm_orientation(
-            detected_stars, orientation_matrix, bsc_catalog, "ursa-major-original.jpg")
+            detected_stars, orientation_matrix, bsc_catalog, "ursa-major-original.jpg", raDecCalculations, confidence)
         assert isinstance(result, float)
         assert result >= 5  # bad result
 
@@ -336,12 +342,13 @@ class TestValidationAlgorithmOrientation:
 
         catalog_star = {'id': 0, 'RA': 0.0, 'Dec': 90.0}
         bsc = MockBSC([catalog_star])
-
+        raDecCalculations = bsc.RaDec
         image = np.zeros((1000, 1000, 3), dtype=np.uint8)
+        confidence = stars_identification(detected_stars, spht={}, al_parameter=0.4, camera_scaling_factor=18.18)
         cv2.imwrite("test_img.jpg", image)
 
         error = validation_algorithm_orientation(
-            detected_stars, orientation_matrix, bsc, "test_img.jpg")
+            detected_stars, orientation_matrix, bsc, "test_img.jpg", raDecCalculations, confidence=confidence)
 
         assert error > 150.0  # Near-opposite direction
 
@@ -355,9 +362,10 @@ class TestValidationAlgorithmOrientation:
 
         image = np.zeros((1000, 1000, 3), dtype=np.uint8)
         cv2.imwrite("test_img.jpg", image)
-
+        raDecCalculations = bsc.RaDec
+        confidence = stars_identification(detected_stars, spht={}, al_parameter=0.4, camera_scaling_factor=18.18)
         error = validation_algorithm_orientation(
-            detected_stars, orientation_matrix, bsc, "test_img.jpg")
+            detected_stars, orientation_matrix, bsc, "test_img.jpg", raDecCalculations, confidence)
 
         assert error == float('inf') or error > 90.0
 
