@@ -6,6 +6,8 @@ import itertools
 from typing import List, Tuple, Any
 import random
 from scipy.spatial import KDTree
+from tqdm import tqdm
+import ast
 
 # Define placeholder types for clarity
 Pixel = Tuple[float, float] # (x, y) coordinate
@@ -359,3 +361,87 @@ def build_spht_offline(bsc: dict, al_parameter: float=1) -> dict:
         # Store the HR values (or another unique identifier) for the triplet
         spht[key].append(tuple(star.get("HR") for star in triplet))
     return spht
+
+def save_spht_to_json(spht: dict, filename: str) -> None:
+    """
+    Save the SPHT (Star Pattern Hash Table) to a JSON file.
+    Converts tuple keys to strings and handles nested tuples in values.
+    
+    Args:
+        spht: The Star Pattern Hash Table dictionary
+        filename: The filename to save to (e.g., 'spht_data.json')
+    """
+    try:
+        # Convert for JSON serialization
+        spht_serializable = {}
+        
+        print(f"Converting SPHT with {len(spht)} entries for JSON serialization...")
+        
+        # Process with progress bar
+        for key, value in tqdm(spht.items(), desc="Converting SPHT entries", unit="entries"):
+            # Convert tuple key to string
+            string_key = str(key) if isinstance(key, tuple) else key
+            
+            # Handle the value - it's typically a list of tuples
+            if isinstance(value, list):
+                # Convert each tuple in the list to a list for JSON compatibility
+                serializable_value = [list(item) if isinstance(item, tuple) else item for item in value]
+            else:
+                serializable_value = value
+                
+            spht_serializable[string_key] = serializable_value
+        
+        print(f"Writing to {filename}...")
+        with open(filename, 'w') as f:
+            json.dump(spht_serializable, f, indent=2)
+        print(f"SPHT saved successfully to {filename}")
+    except Exception as e:
+        print(f"Error saving SPHT to {filename}: {e}")
+
+def load_spht_from_json(filename: str) -> dict:
+    """
+    Load the SPHT (Star Pattern Hash Table) from a JSON file.
+    Converts string keys back to tuples and handles nested arrays back to tuples.
+    
+    Args:
+        filename: The filename to load from (e.g., 'spht_data.json')
+        
+    Returns:
+        The loaded SPHT dictionary with proper tuple keys and values, or empty dict if error
+    """
+    try:
+        with open(filename, 'r') as f:
+            spht_from_json = json.load(f)
+        
+        # Convert back to proper format
+        spht = {}
+        for string_key, value in spht_from_json.items():
+            try:
+                # Convert string key back to tuple using ast.literal_eval (safer than eval)
+                tuple_key = ast.literal_eval(string_key)
+                if not isinstance(tuple_key, tuple):
+                    tuple_key = (tuple_key,) if not isinstance(tuple_key, (list, tuple)) else tuple(tuple_key)
+            except (ValueError, SyntaxError):
+                # If conversion fails, keep as string
+                tuple_key = string_key
+            
+            # Handle the value - convert lists back to tuples
+            if isinstance(value, list):
+                # Convert each list item back to tuple if it's a list
+                converted_value = [tuple(item) if isinstance(item, list) else item for item in value]
+            else:
+                converted_value = value
+                
+            spht[tuple_key] = converted_value
+                
+        print(f"SPHT loaded successfully from {filename}")
+        return spht
+    except FileNotFoundError:
+        print(f"File {filename} not found. Returning empty SPHT.")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from {filename}: {e}")
+        return {}
+    except Exception as e:
+        print(f"Error loading SPHT from {filename}: {e}")
+        return {}

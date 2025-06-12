@@ -344,7 +344,7 @@ if __name__ == "__main__":
     
     random.seed(42)
     bsc = get_star_catalog()
-    subset_bsc = random.sample(bsc, 100)  # Take a random subset of 100
+    subset_bsc = random.sample(bsc, 5)  # Take a random subset of 100
 
     # Find and add the Ursa Major stars from the original bsc by HR value (as string or int)
     hr_values = set(str(star["HR"]) for star in star_catalog)
@@ -357,8 +357,9 @@ if __name__ == "__main__":
     al_parameter = 1
     
     # Build the SPHT (Star Pattern Hash Table) for all triplets in subset_bsc
-    spht = build_spht_offline(subset_bsc, al_parameter)
-        
+    # spht = build_spht_offline(subset_bsc, al_parameter)
+    # save_spht_to_json(spht, "spht.json")
+    spht = load_spht_from_json("spht.json")
     # Execute online algorithm on ursa-major-reduced.png
     result = stars_identification(detected_stars, spht , al_parameter, camera_scaling_factor)
     print(result)
